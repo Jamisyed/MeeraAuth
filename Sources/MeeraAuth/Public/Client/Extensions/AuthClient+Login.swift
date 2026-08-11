@@ -25,7 +25,7 @@ extension AuthClient {
             password: password
         )
         switch step {
-        case .authenticated(let session):
+        case .authenticated(let session, _):
             try await sessionStore.save(session)
             emit(.sessionUpdated(session))
         case .requiresMFA(_, let sessionId, _):

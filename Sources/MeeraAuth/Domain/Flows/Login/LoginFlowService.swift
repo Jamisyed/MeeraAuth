@@ -69,7 +69,11 @@ actor LoginFlowService: LoginFlowServing {
             if session.requiresMFA {
                 return try await beginMFA(sessionId: session.id)
             }
-            return .authenticated(session)
+            var notices: [AuthFlowNotice] = []
+            if let flow = try? FlowJSONParser.parse(response.data) {
+                notices = AuthFlowNotice.notices(from: flow.messages)
+            }
+            return .authenticated(session: session, notices: notices)
         }
 
         let flow = try parseFlowOrThrow(response)
