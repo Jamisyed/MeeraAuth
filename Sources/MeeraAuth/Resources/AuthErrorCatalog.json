@@ -1,0 +1,212 @@
+{
+  "auth.error.access_limit": {
+    "ar": "محاولات كثيرة جداً. يرجى الانتظار قليلاً ثم المحاولة مرة أخرى.",
+    "ar-OM": "حاولت مرات كثيرة. انتظر شوي وحاول مرة ثانية.",
+    "en": "Too many attempts. Please wait a moment and try again."
+  },
+  "auth.error.bad_request": {
+    "ar": "طلب غير صالح. تحقق من البيانات وحاول مرة أخرى.",
+    "ar-OM": "الطلب غير صحيح. تأكد من البيانات وحاول مرة ثانية.",
+    "en": "Invalid request. Please check your details and try again."
+  },
+  "auth.error.civil_id_expiry_mismatch": {
+    "ar": "تاريخ انتهاء البطاقة المدنية غير صحيح.",
+    "ar-OM": "تاريخ انتهاء البطاقة المدنية غلط. تأكد منه.",
+    "en": "Civil ID expiry date does not match."
+  },
+  "auth.error.civil_id_non_omani": {
+    "ar": "هذه الخدمة متاحة للبطاقات المدنية العُمانية فقط.",
+    "ar-OM": "هالخدمة للبطاقة المدنية العُمانية فقط.",
+    "en": "This service is available for Omani Civil IDs only."
+  },
+  "auth.error.civil_id_not_found": {
+    "ar": "لم يتم العثور على البطاقة المدنية.",
+    "ar-OM": "ما لقينا البطاقة المدنية. تأكد من الرقم.",
+    "en": "Civil ID was not found."
+  },
+  "auth.error.code_expired": {
+    "ar": "انتهت صلاحية رمز التحقق. اطلب رمزاً جديداً.",
+    "ar-OM": "انتهت صلاحية رمز التحقق. اطلب رمز جديد.",
+    "en": "The verification code has expired. Request a new one."
+  },
+  "auth.error.code_mismatch": {
+    "ar": "رمز التحقق غير صحيح. حاول مرة أخرى.",
+    "ar-OM": "رمز التحقق غلط. حاول مرة ثانية.",
+    "en": "Incorrect verification code. Please try again."
+  },
+  "auth.error.code_send_frequently": {
+    "ar": "تم إرسال الرمز مؤخراً. انتظر قليلاً قبل إعادة الإرسال.",
+    "ar-OM": "أرسلنا الرمز قبل شوي. انتظر ثم أعد الإرسال.",
+    "en": "A code was just sent. Please wait before requesting another."
+  },
+  "auth.error.code_verify_max": {
+    "ar": "تجاوزت الحد المسموح لمحاولات التحقق. اطلب رمزاً جديداً.",
+    "ar-OM": "تجاوزت عدد المحاولات. اطلب رمز تحقق جديد.",
+    "en": "Too many verification attempts. Request a new code."
+  },
+  "auth.error.email_duplicate": {
+    "ar": "هذا البريد الإلكتروني مسجّل مسبقاً.",
+    "ar-OM": "هالبريد مسجّل من قبل.",
+    "en": "This email is already registered."
+  },
+  "auth.error.email_not_verified": {
+    "ar": "يرجى التحقق من بريدك الإلكتروني أولاً.",
+    "ar-OM": "فعّل بريدك الإلكتروني أولاً.",
+    "en": "Please verify your email first."
+  },
+  "auth.error.flow_expired": {
+    "ar": "انتهت صلاحية الجلسة. يرجى البدء من جديد.",
+    "ar-OM": "انتهت الجلسة. ابدأ من جديد.",
+    "en": "This session has expired. Please start again."
+  },
+  "auth.error.generic": {
+    "ar": "حدث خطأ. يرجى المحاولة مرة أخرى.",
+    "ar-OM": "صار خطأ. حاول مرة ثانية.",
+    "en": "Something went wrong. Please try again."
+  },
+  "auth.error.identity_already_exists": {
+    "ar": "هذا الحساب مسجّل مسبقاً. يمكنك تسجيل الدخول.",
+    "ar-OM": "هالحساب مسجّل من قبل. سجّل الدخول.",
+    "en": "This account is already registered. You can sign in instead."
+  },
+  "auth.error.identity_conflict": {
+    "ar": "تعارض في بيانات الحساب. راجع المعلومات المدخلة.",
+    "ar-OM": "في تعارض ببيانات الحساب. راجع المعلومات.",
+    "en": "Account details conflict. Please review the information entered."
+  },
+  "auth.error.identity_locked": {
+    "ar": "تم قفل الحساب مؤقتاً. حاول لاحقاً أو تواصل مع الدعم.",
+    "ar-OM": "الحساب مقفول مؤقتاً. حاول لاحقاً أو تواصل مع الدعم.",
+    "en": "This account is temporarily locked. Try again later or contact support."
+  },
+  "auth.error.identity_not_found": {
+    "ar": "لم يتم العثور على الحساب. تحقق من البيانات المدخلة.",
+    "ar-OM": "ما لقينا الحساب. تأكد من البيانات.",
+    "en": "No account was found. Please check the details you entered."
+  },
+  "auth.error.identity_not_sync": {
+    "ar": "تعذّر مزامنة الحساب. يرجى المحاولة مرة أخرى.",
+    "ar-OM": "ما قدرنا نزامن الحساب. حاول مرة ثانية.",
+    "en": "Failed to sync your account. Please try again."
+  },
+  "auth.error.invalid_civil_id": {
+    "ar": "رقم البطاقة المدنية غير صالح.",
+    "ar-OM": "رقم البطاقة المدنية غير صحيح.",
+    "en": "Invalid Civil ID number."
+  },
+  "auth.error.invalid_password": {
+    "ar": "كلمة المرور لا تستوفي المتطلبات.",
+    "ar-OM": "كلمة المرور ما تناسب الشروط المطلوبة.",
+    "en": "Password does not meet the requirements."
+  },
+  "auth.error.invalid_state": {
+    "ar": "الخطوة غير مكتملة. يرجى البدء من جديد.",
+    "ar-OM": "الخطوة ناقصة. ابدأ من جديد.",
+    "en": "This step is incomplete. Please start again."
+  },
+  "auth.error.method_disabled": {
+    "ar": "طريقة المصادقة هذه غير متاحة في هذا التطبيق.",
+    "ar-OM": "هالطريقة غير متاحة في هالتطبيق.",
+    "en": "This sign-in method is not available in this app."
+  },
+  "auth.error.mobile_duplicate": {
+    "ar": "رقم الجوال مسجّل مسبقاً.",
+    "ar-OM": "رقم الجوال مسجّل من قبل.",
+    "en": "This mobile number is already registered."
+  },
+  "auth.error.mobile_not_verified": {
+    "ar": "يرجى التحقق من رقم الجوال أولاً.",
+    "ar-OM": "فعّل رقم الجوال أولاً.",
+    "en": "Please verify your mobile number first."
+  },
+  "auth.error.network": {
+    "ar": "تعذّر الاتصال. تحقق من الإنترنت وحاول مرة أخرى.",
+    "ar-OM": "ما في اتصال. تأكد من الإنترنت وحاول مرة ثانية.",
+    "en": "Connection failed. Check your internet and try again."
+  },
+  "auth.error.not_found": {
+    "ar": "المورد المطلوب غير موجود.",
+    "ar-OM": "اللي تبيه مو موجود.",
+    "en": "The requested resource was not found."
+  },
+  "auth.error.service_unavailable": {
+    "ar": "الخدمة غير متاحة حالياً. يرجى المحاولة لاحقاً.",
+    "ar-OM": "الخدمة مو متاحة الحين. حاول لاحقاً.",
+    "en": "Service temporarily unavailable. Please try again later."
+  },
+  "auth.error.no_active_session": {
+    "ar": "لا توجد جلسة نشطة. يرجى تسجيل الدخول.",
+    "ar-OM": "ما في جلسة نشطة. سجّل الدخول.",
+    "en": "No active session. Please sign in."
+  },
+  "auth.error.only_login_civil_id": {
+    "ar": "هذه البطاقة المدنية مخصّصة لتسجيل الدخول فقط.",
+    "ar-OM": "هالبطاقة المدنية للدخول فقط، مو للتسجيل.",
+    "en": "This Civil ID can only be used to sign in."
+  },
+  "auth.error.password_been_used": {
+    "ar": "تم استخدام كلمة المرور هذه من قبل. اختر كلمة مرور جديدة.",
+    "ar-OM": "هكلمة المرور مستخدمة من قبل. اختر كلمة جديدة.",
+    "en": "This password was used before. Choose a new one."
+  },
+  "auth.error.password_expired": {
+    "ar": "انتهت صلاحية كلمة المرور. يرجى تعيين كلمة مرور جديدة.",
+    "ar-OM": "انتهت صلاحية كلمة المرور. عيّن كلمة جديدة.",
+    "en": "Your password has expired. Please set a new one."
+  },
+  "auth.error.password_locked": {
+    "ar": "تم قفل كلمة المرور مؤقتاً بسبب محاولات فاشلة كثيرة.",
+    "ar-OM": "كلمة المرور مقفولة مؤقتاً بسبب محاولات كثيرة.",
+    "en": "Password is temporarily locked after too many failed attempts."
+  },
+  "auth.error.password_mismatch": {
+    "ar": "كلمة المرور غير صحيحة.",
+    "ar-OM": "كلمة المرور غلط.",
+    "en": "Incorrect password."
+  },
+  "auth.error.registration_disabled": {
+    "ar": "التسجيل غير متاح حالياً.",
+    "ar-OM": "التسجيل مو متاح الحين.",
+    "en": "Registration is currently unavailable."
+  },
+  "auth.error.session_expired": {
+    "ar": "انتهت صلاحية الجلسة. يرجى تسجيل الدخول مرة أخرى.",
+    "ar-OM": "انتهت الجلسة. سجّل الدخول مرة ثانية.",
+    "en": "Your session expired. Please sign in again."
+  },
+  "auth.error.unauthorized": {
+    "ar": "غير مصرّح لك بإتمام هذا الإجراء.",
+    "ar-OM": "ما عندك صلاحية لهذا الإجراء.",
+    "en": "You are not authorized to complete this action."
+  },
+  "auth.info.code_completed": {
+    "ar": "تم التحقق بنجاح.",
+    "ar-OM": "تم التحقق بنجاح.",
+    "en": "Verification completed successfully."
+  },
+  "auth.info.code_resent": {
+    "ar": "تم إعادة إرسال رمز التحقق. يرجى التحقق من رسائلك.",
+    "ar-OM": "أرسلنا رمز التحقق مرة ثانية. شيك رسائلك.",
+    "en": "A new verification code was sent. Please check your messages."
+  },
+  "auth.info.code_sent": {
+    "ar": "تم إرسال رمز التحقق. يرجى التحقق من رسائلك.",
+    "ar-OM": "أرسلنا رمز التحقق. شيك رسائلك.",
+    "en": "A verification code has been sent. Please check your messages."
+  },
+  "auth.info.generic": {
+    "ar": "تمت العملية بنجاح.",
+    "ar-OM": "تمت العملية بنجاح.",
+    "en": "The operation completed successfully."
+  },
+  "auth.info.identity_verified": {
+    "ar": "تم التحقق من الهوية بنجاح.",
+    "ar-OM": "تم التحقق من الهوية بنجاح.",
+    "en": "Identity has been verified successfully."
+  },
+  "auth.info.success": {
+    "ar": "تم التحقق بنجاح. يمكنك متابعة التسجيل.",
+    "ar-OM": "تم التحقق بنجاح. تقدر تكمل التسجيل.",
+    "en": "Verified successfully. You can continue registration."
+  }
+}
