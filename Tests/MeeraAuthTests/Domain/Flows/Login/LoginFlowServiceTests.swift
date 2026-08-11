@@ -120,11 +120,12 @@ final class LoginFlowServiceTests: XCTestCase {
         try await login.start()
         let step = try await login.submit(option: .email, identifier: "a@b.com", password: "pw")
 
-        guard case .authenticated(let session) = step else {
+        guard case .authenticated(let session, let notices) = step else {
             return XCTFail("expected authenticated, got \(step)")
         }
         XCTAssertEqual(session.id, "sess-ok")
         XCTAssertFalse(session.requiresMFA)
+        XCTAssertTrue(notices.isEmpty)
         let recorded = await http.recorded
         XCTAssertEqual(recorded.count, 2)
     }

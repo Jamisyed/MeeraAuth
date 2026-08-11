@@ -9,5 +9,5 @@ import Foundation
 
 public enum LoginStep: Sendable, Equatable {
     case requiresMFA(channel: MFAChannel, sessionId: String, notices: [AuthFlowNotice])
-    case authenticated(Session)
+    case authenticated(session: Session, notices: [AuthFlowNotice])
 }
