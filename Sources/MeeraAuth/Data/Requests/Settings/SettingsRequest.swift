@@ -25,6 +25,20 @@ enum SettingsRequest: AuthRequest {
     case verifyEmailCode(flowId: String, sessionId: String, flowTokenId: String, code: String, method: String)
     case confirmBindCivilId(flowId: String, sessionId: String, method: String)
     case updatePassword(flowId: String, sessionId: String, password: String, confirmPassword: String)
+    case bindBiometric(
+        flowId: String,
+        sessionId: String,
+        identifier: String,
+        name: String,
+        biometricAuthKey: String
+    )
+    case unbindBiometric(
+        flowId: String,
+        sessionId: String,
+        identifier: String,
+        name: String,
+        biometricAuthKey: String
+    )
 
     var path: String {
         switch self {
@@ -50,7 +64,9 @@ enum SettingsRequest: AuthRequest {
              .sendEmailCode(let flowId, _, _, _, _),
              .verifyEmailCode(let flowId, _, _, _, _),
              .confirmBindCivilId(let flowId, _, _),
-             .updatePassword(let flowId, _, _, _):
+             .updatePassword(let flowId, _, _, _),
+             .bindBiometric(let flowId, _, _, _, _),
+             .unbindBiometric(let flowId, _, _, _, _):
             return ["flow": flowId]
         }
     }
@@ -65,7 +81,9 @@ enum SettingsRequest: AuthRequest {
              .sendEmailCode(_, let sessionId, _, _, _),
              .verifyEmailCode(_, let sessionId, _, _, _),
              .confirmBindCivilId(_, let sessionId, _),
-             .updatePassword(_, let sessionId, _, _):
+             .updatePassword(_, let sessionId, _, _),
+             .bindBiometric(_, let sessionId, _, _, _),
+             .unbindBiometric(_, let sessionId, _, _, _):
             return sessionId
         }
     }
@@ -137,6 +155,23 @@ enum SettingsRequest: AuthRequest {
                 "method": .string("password"),
                 "password": .string(password),
                 "confirmPassword": .string(confirmPassword)
+            ]
+
+        case let .bindBiometric(_, _, identifier, name, biometricAuthKey):
+            return [
+                "method": .string("biometric"),
+                "identifier": .string(identifier),
+                "name": .string(name),
+                "biometricAuthKey": .string(biometricAuthKey)
+            ]
+
+        case let .unbindBiometric(_, _, identifier, name, biometricAuthKey):
+            return [
+                "method": .string("biometric"),
+                "identifier": .string(identifier),
+                "name": .string(name),
+                "biometricAuthKey": .string(biometricAuthKey),
+                "unlinkKey": .bool(true)
             ]
         }
     }

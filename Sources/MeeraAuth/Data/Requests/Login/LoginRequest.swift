@@ -18,6 +18,12 @@ enum LoginRequest: AuthRequest {
         password: String,
         method: String
     )
+    case submitBiometric(
+        flowId: String,
+        identifier: String,
+        name: String,
+        biometricAuthKey: String
+    )
     case sendMFA(
         flowId: String,
         sessionId: String,
@@ -42,7 +48,7 @@ enum LoginRequest: AuthRequest {
             return "login/api"
         case .flowHints:
             return "login/flows"
-        case .submit, .sendMFA, .verifyMFA:
+        case .submit, .submitBiometric, .sendMFA, .verifyMFA:
             return "login"
         }
     }
@@ -51,7 +57,7 @@ enum LoginRequest: AuthRequest {
         switch self {
         case .start, .startMFA, .flowHints:
             return .get
-        case .submit, .sendMFA, .verifyMFA:
+        case .submit, .submitBiometric, .sendMFA, .verifyMFA:
             return .post
         }
     }
@@ -63,6 +69,7 @@ enum LoginRequest: AuthRequest {
         case .flowHints(let flowId, _):
             return ["id": flowId]
         case .submit(let flowId, _, _, _, _),
+             .submitBiometric(let flowId, _, _, _),
              .sendMFA(let flowId, _, _, _, _, _, _),
              .verifyMFA(let flowId, _, _, _, _, _):
             return ["flow": flowId]
@@ -78,14 +85,14 @@ enum LoginRequest: AuthRequest {
              .sendMFA(_, let sessionId, _, _, _, _, _),
              .verifyMFA(_, let sessionId, _, _, _, _):
             return sessionId
-        case .start, .submit:
+        case .start, .submit, .submitBiometric:
             return nil
         }
     }
 
     var headers: [String: String] {
         switch self {
-        case .submit, .sendMFA, .verifyMFA:
+        case .submit, .submitBiometric, .sendMFA, .verifyMFA:
             return [
                 "Content-Type": "application/json",
                 "Accept": "application/json"
@@ -104,6 +111,14 @@ enum LoginRequest: AuthRequest {
             var body = Self.credentialBody(option: option, identifier: identifier, password: password)
             body["method"] = .string(method)
             return body
+
+        case let .submitBiometric(_, identifier, name, biometricAuthKey):
+            return [
+                "method": .string("biometric"),
+                "identifier": .string(identifier),
+                "name": .string(name),
+                "biometricAuthKey": .string(biometricAuthKey)
+            ]
 
         case let .sendMFA(_, _, channel, resource, email, mobile, flowTokenId):
             var body: AuthJSONObject = [

@@ -102,4 +102,14 @@ protocol AuthClientServing: Actor {
     // MARK: - Logout
 
     func logout() async throws
+
+    // MARK: - Biometric
+
+    func startBiometricLogin() async throws
+    func loginWithBiometric(identifier: String, name: String, biometricAuthKey: String) async throws -> LoginStep
+    func startBiometricSettings() async throws
+    @discardableResult
+    func settingsBindBiometric(identifier: String, name: String, biometricAuthKey: String) async throws -> [AuthFlowNotice]
+    @discardableResult
+    func settingsUnbindBiometric(identifier: String, name: String, biometricAuthKey: String) async throws -> [AuthFlowNotice]
 }
