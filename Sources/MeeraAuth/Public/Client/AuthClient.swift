@@ -19,6 +19,7 @@ public actor AuthClient: AuthClientServing {
     let recoveryFlow: any RecoveryFlowServing
     let verificationFlow: any VerificationFlowServing
     let settingsFlow: any SettingsFlowServing
+    let biometricFlow: any BiometricFlowServing
     let tokenService: any TokenServing
 
     var eventContinuations: [UUID: AsyncStream<AuthEvent>.Continuation] = [:]
@@ -42,6 +43,7 @@ public actor AuthClient: AuthClientServing {
         self.recoveryFlow = RecoveryFlowService(api: api, config: configuration)
         self.verificationFlow = VerificationFlowService(api: api, config: configuration)
         self.settingsFlow = SettingsFlowService(api: api, config: configuration)
+        self.biometricFlow = BiometricFlowService(api: api, config: configuration)
         self.tokenService = TokenService(api: api, config: configuration, tokenStore: tokenStore)
     }
 }

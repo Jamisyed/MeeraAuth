@@ -39,6 +39,9 @@ extension AuthClient {
         guard let session = try await sessionStore.load() else {
             throw AuthError(code: .noActiveSession, message: "No session for MFA")
         }
+        if await biometricFlow.isMFAActive() {
+            return try await biometricFlow.sendMFA(sessionId: session.id)
+        }
         return try await loginFlow.sendMFA(sessionId: session.id)
     }
 
@@ -46,6 +49,9 @@ extension AuthClient {
     public func resendLoginMFA() async throws -> [AuthFlowNotice] {
         guard let session = try await sessionStore.load() else {
             throw AuthError(code: .noActiveSession, message: "No session for MFA")
+        }
+        if await biometricFlow.isMFAActive() {
+            return try await biometricFlow.resendMFA(sessionId: session.id)
         }
         return try await loginFlow.resendMFA(sessionId: session.id)
     }
@@ -55,7 +61,12 @@ extension AuthClient {
         guard let session = try await sessionStore.load() else {
             throw AuthError(code: .noActiveSession, message: "No session for MFA")
         }
-        let result = try await loginFlow.verifyMFA(sessionId: session.id, code: code)
+        let result: LoginMFAResult
+        if await biometricFlow.isMFAActive() {
+            result = try await biometricFlow.verifyMFA(sessionId: session.id, code: code)
+        } else {
+            result = try await loginFlow.verifyMFA(sessionId: session.id, code: code)
+        }
         try await sessionStore.save(result.session)
         emit(.loggedIn(result.session))
         return result

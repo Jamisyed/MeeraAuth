@@ -67,6 +67,53 @@ final class AuthRequestTests: XCTestCase {
         XCTAssertEqual(json["password"] as? String, "secret")
     }
 
+    func testBiometricLoginAndSettingsBodies() throws {
+        let login = try LoginRequest.submitBiometric(
+            flowId: "flow-bio",
+            identifier: "a@b.com",
+            name: "HostApp-faceID",
+            biometricAuthKey: "uuid-key"
+        ).makeHTTPRequest(config: config)
+        XCTAssertEqual(login.url.path, "/x/login")
+        XCTAssertEqual(login.url.query, "flow=flow-bio")
+        let loginJSON = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: XCTUnwrap(login.body)) as? [String: Any]
+        )
+        XCTAssertEqual(loginJSON["method"] as? String, "biometric")
+        XCTAssertEqual(loginJSON["identifier"] as? String, "a@b.com")
+        XCTAssertEqual(loginJSON["name"] as? String, "HostApp-faceID")
+        XCTAssertEqual(loginJSON["biometricAuthKey"] as? String, "uuid-key")
+
+        let bind = try SettingsRequest.bindBiometric(
+            flowId: "settings-1",
+            sessionId: "sess-1",
+            identifier: "a@b.com",
+            name: "HostApp-faceID",
+            biometricAuthKey: "uuid-key"
+        ).makeHTTPRequest(config: config)
+        XCTAssertEqual(bind.url.path, "/x/settings")
+        XCTAssertEqual(bind.url.query, "flow=settings-1")
+        XCTAssertEqual(bind.headers["X-SESSION-ID"], "sess-1")
+        let bindJSON = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: XCTUnwrap(bind.body)) as? [String: Any]
+        )
+        XCTAssertEqual(bindJSON["method"] as? String, "biometric")
+        XCTAssertNil(bindJSON["unlinkKey"])
+
+        let unbind = try SettingsRequest.unbindBiometric(
+            flowId: "settings-1",
+            sessionId: "sess-1",
+            identifier: "a@b.com",
+            name: "HostApp-faceID",
+            biometricAuthKey: "uuid-key"
+        ).makeHTTPRequest(config: config)
+        let unbindJSON = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: XCTUnwrap(unbind.body)) as? [String: Any]
+        )
+        XCTAssertEqual(unbindJSON["unlinkKey"] as? Bool, true)
+        XCTAssertEqual(unbindJSON["method"] as? String, "biometric")
+    }
+
     func testLoginCivilIdUsesConfiguredMethod() throws {
         let http = try LoginRequest.submit(
             flowId: "flow-1",
