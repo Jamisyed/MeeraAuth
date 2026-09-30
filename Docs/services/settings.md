@@ -17,11 +17,13 @@ Authenticated settings: change password, bind Civil ID, update email/mobile with
 | Method | Role |
 |--------|------|
 | `startSettings()` | Open settings flow |
-| `settingsUpdatePassword` | Change password |
-| `settingsVerifyCivilId` | Start Civil ID bind |
-| `settingsSendMobileCode` / `settingsVerifyMobileCode` | Mobile OTP |
-| `settingsSendEmailCode` / `settingsVerifyEmailCode` | Email OTP |
-| `settingsConfirmBindCivilId` | Finish Civil ID bind |
+| `settingsUpdatePassword` | Change password → `[AuthFlowNotice]` |
+| `settingsVerifyCivilId` | Start Civil ID bind → `CivilIdVerificationResult` |
+| `settingsSendMobileCode` / `settingsVerifyMobileCode` | Mobile OTP → `[AuthFlowNotice]` |
+| `settingsSendEmailCode` / `settingsVerifyEmailCode` | Email OTP → `[AuthFlowNotice]` |
+| `settingsConfirmBindCivilId` | Finish Civil ID bind → `[AuthFlowNotice]` |
+
+Biometric bind/unbind: [biometric.md](./biometric.md) (`startBiometricSettings`, separate from `startSettings`).
 
 ---
 
@@ -73,14 +75,20 @@ flowchart TD
 
 ```swift
 try await auth.startSettings()
-try await auth.settingsUpdatePassword(password: newPass, confirmPassword: newPass)
+_ = try await auth.settingsUpdatePassword(password: newPass, confirmPassword: newPass)
 
 // Civil ID bind (abbreviated)
 try await auth.startSettings()
-try await auth.settingsVerifyCivilId(civilId, expiry: expiry)
-try await auth.settingsSendMobileCode(mobile: mobile)
-try await auth.settingsVerifyMobileCode(code)
-try await auth.settingsConfirmBindCivilId()
+let civil = try await auth.settingsVerifyCivilId(civilId, expiry: expiry)
+// civil.username, civil.notices
+_ = try await auth.settingsSendMobileCode(
+    mobile: mobile,
+    username: civil.username,
+    civilIdUpdate: true,
+    useCivilIDMobile: true
+)
+_ = try await auth.settingsVerifyMobileCode(code)
+_ = try await auth.settingsConfirmBindCivilId()
 ```
 
 ---

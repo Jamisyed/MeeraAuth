@@ -25,14 +25,15 @@ Image captcha UI is **not** supported.
 12. [Update mobile (settings)](#12-update-mobile-settings)
 13. [Verification (activate email / mobile)](#13-verification-activate-email--mobile)
 14. [Civil ID bind (settings)](#14-civil-id-bind-settings)
-15. [Cold start & session helpers](#15-cold-start--session-helpers)
-16. [Events](#16-events)
-17. [Errors](#17-errors)
-18. [Network logging](#18-network-logging)
-19. [MVI pattern](#19-mvi-pattern)
-20. [API quick reference](#20-api-quick-reference)
-21. [Host checklist](#21-host-checklist)
-22. [Service docs (JSON + HTTP)](#22-service-docs-json--http)
+15. [Biometric](#15-biometric)
+16. [Cold start & session helpers](#16-cold-start--session-helpers)
+17. [Events](#17-events)
+18. [Errors](#18-errors)
+19. [Network logging](#19-network-logging)
+20. [MVI pattern](#20-mvi-pattern)
+21. [API quick reference](#21-api-quick-reference)
+22. [Host checklist](#22-host-checklist)
+23. [Service docs (JSON + HTTP)](#23-service-docs-json--http)
 
 ---
 
@@ -61,7 +62,7 @@ flowchart TD
   Login --> Tok[§8 Tokens]
   MFA --> Tok
   J -->|Forgot password| Rec[§10 Recovery → settings password]
-  J -->|Cold start| Cold[§15 currentTokens]
+  J -->|Cold start| Cold[§16 currentTokens]
   Cold -->|tokens| Home[Home + validAccessToken]
   Tok --> Home
   J -->|Sign out| Out[§9 Logout]
@@ -74,8 +75,8 @@ Hosts only use `AuthClient`. Internally, SSO calls follow an Elevate-style **req
 | `Public/Client` | `AuthClient` + `Extensions/` (Events, Session, Login, Registration, …) |
 | `Public/Configuration` | `AuthConfiguration`, scopes, locale, resources, MFAPolicy |
 | `Public/Models` | `Session/`, `Login/`, `Registration/` model groups |
-| `Public/Errors` | `AuthError`, `AuthErrorPresenter`, `AuthErrorCatalog.json` |
-| `Domain/Flows` | Per-flow services (`Login/`, `Registration/`, `Recovery/`, …) |
+| `Public/Errors` | `AuthError`, `AuthFlowNotice`, `AuthErrorPresenter`, `AuthErrorCatalog.json` |
+| `Domain/Flows` | Per-flow services (`Login/`, `Biometric/`, `Registration/`, `Recovery/`, …) |
 | `Domain/Tokens` | Token exchange / refresh |
 | `Domain/Client` | `AuthClientServing` |
 | `Data/Requests` | Per-flow `AuthRequest` enums (+ `Core/`) |
@@ -363,7 +364,7 @@ flowchart LR
 
 Requires `signupOptions` to contain `.civilId`.
 
-Oman / Meera Civil ID onboarding. Each step **succeeds** or **throws `AuthError`** until the final `submitRegistrationPassword`, which returns `RegistrationStep`.
+Oman / Meera Civil ID onboarding. OTP steps return `[AuthFlowNotice]`; only `type: "error"` throws. Final `submitRegistrationPassword` returns `RegistrationStep`.
 
 Sample HostApp: `Features/Auth/Signup/` — method picker shows signup when `auth.configuration.signupOptions.contains(.civilId)`.
 
@@ -587,12 +588,15 @@ do {
     )
 
     switch step {
-    case .authenticated:
+    case .authenticated(let session, let notices):
+        _ = (session, notices) // notices often []
         let tokens = try await auth.exchangeTokens()
         // navigate home — use tokens.accessToken
 
-    case .requiresMFA(let channel, _):
+    case .requiresMFA(let channel, _, let notices):
         // show OTP UI for channel (.email or .sms)
+        // notices may include “code sent” when autoSendOTP == true
+        showInfo(notices.first?.localizedDescription)
         showMFA(channel: channel)
     }
 } catch let error as AuthError {
@@ -638,7 +642,7 @@ flowchart TD
   A[startLogin] --> B[login option + password]
   B -->|AuthError| E1[Show error / restart if flowExpired]
   B --> C{Session identity?}
-  C -->|present| D[.authenticated]
+  C -->|present| D[.authenticated + notices]
   D --> T[exchangeTokens]
   C -->|null| F[GET aal=aal2]
   F --> G{flow.active}
@@ -649,13 +653,15 @@ flowchart TD
   I --> K
   K -->|true| L[send MFA now]
   K -->|false| M[host sendLoginMFA]
-  L --> N[.requiresMFA]
+  L --> N[.requiresMFA + notices]
   M --> N
-  N --> O[verifyLoginMFA]
+  N --> O[verifyLoginMFA → LoginMFAResult]
   O --> T
 ```
 
 Channel comes from SSO `active` only. `MFAPolicy.autoSendOTP` only controls **when** the first OTP is sent.
+
+Info/success SSO messages return as `AuthFlowNotice` (not thrown). See [§18 Errors](#18-errors).
 
 ### Request / response JSON
 
@@ -829,8 +835,8 @@ MFA is **server-driven**. After password / Civil ID login, SSO returns a session
 
 | Server session | Meaning | `LoginStep` |
 |----------------|---------|-------------|
-| `identity` present | Fully authenticated (AAL satisfied) | `.authenticated(session)` |
-| `identity == null` | Second factor required (AAL2) | `.requiresMFA(channel, sessionId)` |
+| `identity` present | Fully authenticated (AAL satisfied) | `.authenticated(session, notices)` |
+| `identity == null` | Second factor required (AAL2) | `.requiresMFA(channel, sessionId, notices)` |
 
 ```swift
 public var requiresMFA: Bool { identity == nil }  // on Session
@@ -883,14 +889,16 @@ flowchart TD
 Host UI: show OTP field only (code is already on the way). Then:
 
 ```swift
-let session = try await auth.verifyLoginMFA(code: otp)
+let result = try await auth.verifyLoginMFA(code: otp)
+_ = (result.session, result.notices)
 let tokens = try await auth.exchangeTokens()
 ```
 
 Optional resend:
 
 ```swift
-try await auth.resendLoginMFA()
+let notices = try await auth.resendLoginMFA()
+showInfo(notices.first?.localizedDescription)
 ```
 
 #### Case C — MFA **required** + `autoSendOTP: false`
@@ -908,8 +916,9 @@ flowchart TD
 Host must send before verify:
 
 ```swift
-try await auth.sendLoginMFA()          // user tapped “Send code”
-let session = try await auth.verifyLoginMFA(code: otp)
+let sendNotices = try await auth.sendLoginMFA()  // user tapped “Send code”
+showInfo(sendNotices.first?.localizedDescription)
+let result = try await auth.verifyLoginMFA(code: otp)
 let tokens = try await auth.exchangeTokens()
 ```
 
@@ -917,13 +926,14 @@ let tokens = try await auth.exchangeTokens()
 
 ```mermaid
 flowchart LR
-  A[login] --> B[flow messages]
-  B --> C[throws AuthError]
+  A[login] --> B{message type?}
+  B -->|error| C[throws AuthError]
+  B -->|info / success| D[AuthFlowNotice — not thrown]
 ```
 
 | `autoSendOTP` | Behavior |
 |---------------|----------|
-| either | No MFA. No OTP. Map `AuthError.field` to the form. |
+| either | Only `type: "error"` throws. Map `AuthError.field` to the form. |
 
 ### Decision tree
 
@@ -950,10 +960,10 @@ flowchart TD
 // With MFAPolicy(autoSendOTP: true) — default in sample HostApp —
 // OTP is already sent. Only verify (and resend if needed).
 
-let session = try await auth.verifyLoginMFA(code: otp)
+let result = try await auth.verifyLoginMFA(code: otp)
 let tokens = try await auth.exchangeTokens()
 
-try await auth.resendLoginMFA()
+_ = try await auth.resendLoginMFA()
 ```
 
 | `MFAChannel` | SSO method |
@@ -1180,16 +1190,17 @@ MeeraAuth: `requiresMFA` ≡ `identity == null`.
 
 SSO recovery = prove identity with OTP → get a **session** → open **settings** → set a new password.
 
-There is **no** `LoginStep`-style enum here: each call either **succeeds** or **throws `AuthError`**. Host UI advances on success; maps `error.field` on failure.
+OTP/send success returns `[AuthFlowNotice]`. Verify returns `RecoveryVerifyResult`. Only SSO `type: "error"` throws `AuthError`.
 
 ### Happy path (copy-paste)
 
 ```swift
 try await auth.startRecovery()
-try await auth.recoverySendCode(option: .email, identifier: email)
-_ = try await auth.recoveryVerifyCode(otp)
+_ = try await auth.recoverySendCode(option: .email, identifier: email)
+let result = try await auth.recoveryVerifyCode(otp)
+_ = result.session
 try await auth.startSettings()
-try await auth.settingsUpdatePassword(password: newPass, confirmPassword: newPass)
+_ = try await auth.settingsUpdatePassword(password: newPass, confirmPassword: newPass)
 ```
 
 ### Step table — what each call does
@@ -1197,11 +1208,11 @@ try await auth.settingsUpdatePassword(password: newPass, confirmPassword: newPas
 | # | Call | SSO | Success | Failure (throws) | Host UI next |
 |---|------|-----|---------|------------------|--------------|
 | 1 | `startRecovery()` | `GET …/recovery/api` | Flow created (internal `flowId`) | Network / recovery disabled | Show “forgot password” form |
-| 2 | `recoverySendCode(option:identifier:)` | `POST …/recovery?flow=` | OTP sent; `flowTokenId` stored | Bad identifier, rate limit, unknown user, … | Show OTP screen |
-| 3 | `recoveryResendCode()` *(optional)* | `POST …/recovery` (same body + token) | New OTP sent | Too frequent / expired flow | Stay on OTP; toast |
-| 4 | `recoveryVerifyCode(otp)` | `POST …/recovery` with `code` | Returns `Session`; saved in session store | Wrong / expired code | Stay on OTP; show error |
+| 2 | `recoverySendCode(option:identifier:)` | `POST …/recovery?flow=` | OTP sent → `[AuthFlowNotice]` | Bad identifier, rate limit, unknown user, … | Show OTP screen |
+| 3 | `recoveryResendCode()` *(optional)* | `POST …/recovery` (same body + token) | New OTP → `[AuthFlowNotice]` | Too frequent / expired flow | Stay on OTP; toast |
+| 4 | `recoveryVerifyCode(otp)` | `POST …/recovery` with `code` | `RecoveryVerifyResult` (session + notices) | Wrong / expired code | Stay on OTP; show error |
 | 5 | `startSettings()` | `GET …/settings/api` (+ `X-SESSION-ID`) | Settings flow ready | No session / settings disabled | Show new-password form |
-| 6 | `settingsUpdatePassword(password:confirmPassword:)` | `POST …/settings` `method=password` | Password updated | Mismatch, weak password, policy, … | Go to login (or exchange tokens) |
+| 6 | `settingsUpdatePassword(password:confirmPassword:)` | `POST …/settings` `method=password` | `[AuthFlowNotice]` | Mismatch, weak password, policy, … | Go to login (or exchange tokens) |
 
 ### `recoverySendCode` — `option` switch
 
@@ -1227,7 +1238,7 @@ case .civilId: // civilid + resetMobile template
 |-----------|--------------|-------------|
 | Valid email/phone + send OK | OTP delivered | Navigate to OTP screen |
 | Unknown / invalid identifier | `AuthError` from flow messages | Stay on form; highlight field |
-| OTP correct | `Session` returned (`identity` may be present) | Call `startSettings()` |
+| OTP correct | `RecoveryVerifyResult` (session saved) | Call `startSettings()` |
 | OTP wrong / expired | `AuthError` (e.g. code mismatch / expired) | Stay on OTP; allow resend |
 | Called verify before send | `.invalidState` (“Send code first”) | Programmer error — fix UI order |
 | Called settings without recovery/login session | `.noActiveSession` | Restart recovery or login |
@@ -1250,7 +1261,7 @@ flowchart TD
   G --> H[Login UI or exchangeTokens]
 ```
 
-There is **no** `LoginStep`-style enum: each call **succeeds** or **throws `AuthError`**. Host UI advances on success.
+OTP/send success returns notices; verify returns `RecoveryVerifyResult`. Only SSO `type: "error"` throws. Host UI advances on success.
 
 Deep JSON: [services/recovery.md](./services/recovery.md).
 
@@ -1314,16 +1325,16 @@ Deep JSON: [services/recovery.md](./services/recovery.md).
 }
 ```
 
-**Response:** session JSON → MeeraAuth saves and returns `Session`. Then `startSettings()` + password update (see **Settings password JSON** below).
+**Response:** session JSON → MeeraAuth saves and returns `RecoveryVerifyResult(session:notices:)`. Then `startSettings()` + password update (see **Settings password JSON** below).
 
 ### Sequence (happy path)
 
 ```swift
 try await auth.startRecovery()
-try await auth.recoverySendCode(option: .email, identifier: email)
+_ = try await auth.recoverySendCode(option: .email, identifier: email)
 _ = try await auth.recoveryVerifyCode(otp)
 try await auth.startSettings()
-try await auth.settingsUpdatePassword(password: newPass, confirmPassword: newPass)
+_ = try await auth.settingsUpdatePassword(password: newPass, confirmPassword: newPass)
 ```
 
 ### Step A — Recovery (code)
@@ -1331,14 +1342,15 @@ try await auth.settingsUpdatePassword(password: newPass, confirmPassword: newPas
 ```swift
 try await auth.startRecovery()
 
-try await auth.recoverySendCode(
+_ = try await auth.recoverySendCode(
     option: .email,                 // or .phone / .civilId
     identifier: "user@example.com"
 )
 
-try await auth.recoveryResendCode()   // optional
+_ = try await auth.recoveryResendCode()   // optional
 
-let session = try await auth.recoveryVerifyCode(otpCode)
+let result = try await auth.recoveryVerifyCode(otpCode)
+_ = result.session
 ```
 
 ### Step B — Set new password (settings)
@@ -1348,7 +1360,7 @@ Requires the **session from recovery** (or a normal login session):
 ```swift
 try await auth.startSettings()
 
-try await auth.settingsUpdatePassword(
+_ = try await auth.settingsUpdatePassword(
     password: newPassword,
     confirmPassword: newPasswordAgain
 )
@@ -1387,7 +1399,7 @@ let tokens = try await auth.exchangeTokens()
 
 ## 11. Update / reset email (settings)
 
-Requires an authenticated session (login **or** recovery).
+Requires an authenticated session (login **or** recovery). Returns `[AuthFlowNotice]` on success; only `type: "error"` throws.
 
 ### Decision tree
 
@@ -1404,10 +1416,10 @@ flowchart TD
 try await auth.startSettings()
 
 // Send OTP to the new email
-try await auth.settingsSendEmailCode("new@example.com")
+_ = try await auth.settingsSendEmailCode("new@example.com")
 
 // User enters OTP
-try await auth.settingsVerifyEmailCode(otpCode)
+_ = try await auth.settingsVerifyEmailCode(otpCode)
 ```
 
 Uses `resources.activeEmail` (locale injected → e.g. `{sso}{en}{activeEmailTmpl}`).
@@ -1438,7 +1450,7 @@ Uses `resources.activeEmail` (locale injected → e.g. `{sso}{en}{activeEmailTmp
 
 ## 12. Update mobile (settings)
 
-Requires an authenticated session (login **or** recovery). Each call **succeeds** or **throws `AuthError`**.
+Requires an authenticated session (login **or** recovery). Returns `[AuthFlowNotice]` on success; only `type: "error"` throws.
 
 ### Decision tree
 
@@ -1458,14 +1470,14 @@ Uses `resources.activeMobile` (locale injected → e.g. `{sso}{en}{activeMobileT
 ```swift
 try await auth.startSettings()
 
-try await auth.settingsSendMobileCode(
+_ = try await auth.settingsSendMobileCode(
     mobile: "+9689xxxxxxx",
     username: optionalUsername,   // if required by product
     civilIdUpdate: true,
     useCivilIDMobile: true
 )
 
-try await auth.settingsVerifyMobileCode(otpCode)
+_ = try await auth.settingsVerifyMobileCode(otpCode)
 ```
 
 ### Request / response JSON
@@ -1489,7 +1501,7 @@ try await auth.settingsVerifyMobileCode(otpCode)
 
 ## 13. Verification (activate email / mobile)
 
-For activating an unverified email/mobile **outside** full settings Civil ID bind (verification flow). Each call **succeeds** or **throws `AuthError`**.
+For activating an unverified email/mobile **outside** full settings Civil ID bind (verification flow). Send/verify return `[AuthFlowNotice]`; only `type: "error"` throws.
 
 ### Decision tree
 
@@ -1520,13 +1532,13 @@ Deep JSON: [services/verification.md](./services/verification.md).
 ```swift
 try await auth.startVerification()
 
-try await auth.verificationSendOTP(
+_ = try await auth.verificationSendOTP(
     channel: .email,              // or .sms
     identifier: "user@example.com"
 )
 
-try await auth.verificationResendOTP()   // optional
-try await auth.verificationVerifyOTP(code)
+_ = try await auth.verificationResendOTP()   // optional
+_ = try await auth.verificationVerifyOTP(code)
 ```
 
 ### Request / response JSON
@@ -1598,7 +1610,7 @@ Do not send email/mobile on verify.
 
 ## 14. Civil ID bind (settings)
 
-Requires an authenticated **session** (login or recovery). Each call **succeeds** or **throws `AuthError`** — no step enum.
+Requires an authenticated **session** (login or recovery). OTP/settings helpers return notices; `settingsVerifyCivilId` returns `CivilIdVerificationResult` (`username` + `notices`). Only SSO `type: "error"` throws.
 
 ### Decision tree
 
@@ -1628,15 +1640,20 @@ Deep JSON: [services/settings.md](./services/settings.md).
 ```swift
 try await auth.startSettings()
 
-try await auth.settingsVerifyCivilId(civilId, expiry: "2030-12-31")
+let civil = try await auth.settingsVerifyCivilId(civilId, expiry: "2030-12-31")
 
-try await auth.settingsSendMobileCode(mobile: mobile, …)
-try await auth.settingsVerifyMobileCode(smsOTP)
+_ = try await auth.settingsSendMobileCode(
+    mobile: mobile,
+    username: civil.username,
+    civilIdUpdate: true,
+    useCivilIDMobile: true
+)
+_ = try await auth.settingsVerifyMobileCode(smsOTP)
 
-try await auth.settingsSendEmailCode(email)
-try await auth.settingsVerifyEmailCode(emailOTP)
+_ = try await auth.settingsSendEmailCode(email)
+_ = try await auth.settingsVerifyEmailCode(emailOTP)
 
-try await auth.settingsConfirmBindCivilId()
+_ = try await auth.settingsConfirmBindCivilId()
 ```
 
 ### Request / response JSON
@@ -1667,7 +1684,45 @@ Deep JSON: [services/settings.md](./services/settings.md).
 
 ---
 
-## 15. Cold start & session helpers
+## 15. Biometric
+
+SSO biometric login and settings bind/unbind. The **host** owns Face ID / Touch ID, UUID `biometricAuthKey`, device `name`, and identifier. MeeraAuth only talks to SSO (`method: biometric`).
+
+```swift
+try await auth.startBiometricLogin()
+let step = try await auth.loginWithBiometric(
+    identifier: emailOrMobile,
+    name: deviceName,
+    biometricAuthKey: storedUUID
+)
+
+switch step {
+case .authenticated(_, let notices):
+    _ = notices
+    _ = try await auth.exchangeTokens()
+case .requiresMFA(_, _, let notices):
+    _ = notices
+    _ = try await auth.verifyLoginMFA(code: otp)
+}
+
+try await auth.startBiometricSettings()
+_ = try await auth.settingsBindBiometric(
+    identifier: emailOrMobile,
+    name: deviceName,
+    biometricAuthKey: newUUID
+)
+_ = try await auth.settingsUnbindBiometric(
+    identifier: emailOrMobile,
+    name: deviceName,
+    biometricAuthKey: storedUUID
+)
+```
+
+Full detail: [services/biometric.md](./services/biometric.md).
+
+---
+
+## 16. Cold start & session helpers
 
 ```mermaid
 flowchart TD
@@ -1700,7 +1755,7 @@ Prefer `validAccessToken()` over `accessToken()` when calling APIs — see [§8]
 
 ---
 
-## 16. Events
+## 17. Events
 
 ```swift
 Task {
@@ -1717,7 +1772,19 @@ Task {
 
 ---
 
-## 17. Errors
+## 18. Errors
+
+SSO flow `messages` are split by **`type`**:
+
+| Server `type` | SDK behavior |
+|---------------|--------------|
+| `"info"` / `"success"` | `[AuthFlowNotice]` (or result `.notices`) — **not** thrown |
+| `"error"` | Thrown `AuthError` |
+
+```swift
+let notices = try await auth.sendLoginMFA()
+showInfo(notices.first?.localizedDescription)
+```
 
 ```swift
 public struct AuthError: Error {
@@ -1744,7 +1811,7 @@ catch let error as AuthError {
 | Property | Use for |
 |----------|---------|
 | `error.code` | Switch / behavior |
-| `error.localizedDescription` | User-facing UI (``LocalizedError``) |
+| `error.localizedDescription` | User-facing UI (`LocalizedError`) |
 | `error.message` | Server / SSO raw string (logs) |
 | `error.field` | Optional form placement |
 | `error.retryable` | Restart flow / retry |
@@ -1762,12 +1829,11 @@ catch let error as AuthError {
 | `AuthError.signupDisabled` / `signupMethodDisabled` | Signup off or path not in `signupOptions` (client; SSO not called) |
 
 `error.retryable` — network / rate limit / expired flow.  
-`error.isInformationalOTP` — code sent/resent (not a hard failure).  
 Allow-list errors use `code: .methodDisabled` and `context["fault"]` of `host.loginOptions` or `host.signupOptions`.
 
 ### Host localization
 
-``AuthError`` conforms to `LocalizedError`. UI strings follow **`AuthConfiguration.locale`** (synced into ``AuthLocalization`` when `AuthClient` is created) — not the phone language.
+`AuthError` conforms to `LocalizedError`. UI strings follow **`AuthConfiguration.locale`** (synced into `AuthLocalization` when `AuthClient` is created) — not the phone language.
 
 ```swift
 // HostAppApp: locale: .arabic  → Arabic alerts even if device is English
@@ -1782,11 +1848,11 @@ AuthLocalization.locale = .arabic
 ```
 
 Catalog: package `Resources/AuthErrorCatalog.json` (`en` / `ar` / `ar-OM`).  
-Optional helper: ``AuthErrorPresenter.present(_:)``.
+Optional helper: `AuthErrorPresenter.present(_:)`.
 
 ---
 
-## 18. Network logging
+## 19. Network logging
 
 Host-controlled curl logs:
 
@@ -1816,7 +1882,7 @@ $ curl -v \
 
 ---
 
-## 19. MVI pattern
+## 20. MVI pattern
 
 Same shape as Mirsad Auth:
 
@@ -1833,7 +1899,7 @@ Sample: `HostApp/HostApp/Features/Auth/` (login MVI + Civil ID signup gated by `
 
 ---
 
-## 20. API quick reference
+## 21. API quick reference
 
 ### Registration
 
@@ -1844,10 +1910,10 @@ Requires non-empty `signupOptions`. `.basic` unlocks `register`; `.civilId` unlo
 | `startRegistration()` | Create registration flow (**required** first; fails if `signupOptions` empty) |
 | `register(_:)` | Basic password signup → `RegistrationStep` (needs `.basic`) |
 | `verifyRegistrationCivilId(_:expiry:)` | Civil ID step (needs `.civilId`) |
-| `sendRegistrationMobileOTP(...)` / `resendRegistrationMobileOTP()` | Civil ID mobile OTP |
-| `verifyRegistrationMobileOTP(_:)` | Confirm mobile OTP |
-| `sendRegistrationEmailOTP(_:)` / `resendRegistrationEmailOTP()` | Civil ID email OTP |
-| `verifyRegistrationEmailOTP(_:)` | Confirm email OTP |
+| `sendRegistrationMobileOTP(...)` / `resendRegistrationMobileOTP()` | Civil ID mobile OTP → `[AuthFlowNotice]` |
+| `verifyRegistrationMobileOTP(_:)` | Confirm mobile OTP → `[AuthFlowNotice]` |
+| `sendRegistrationEmailOTP(_:)` / `resendRegistrationEmailOTP()` | Civil ID email OTP → `[AuthFlowNotice]` |
+| `verifyRegistrationEmailOTP(_:)` | Confirm email OTP → `[AuthFlowNotice]` |
 | `submitRegistrationPassword(password:confirmPassword:)` | Finish Civil ID signup → `RegistrationStep` |
 
 ### Login
@@ -1856,9 +1922,18 @@ Requires non-empty `signupOptions`. `.basic` unlocks `register`; `.civilId` unlo
 |--------|---------|
 | `startLogin()` | Create login flow (**required** first) |
 | `login(option:identifier:password:)` | Submit credentials → `LoginStep` |
-| `sendLoginMFA()` / `resendLoginMFA()` | Send / resend MFA OTP |
-| `verifyLoginMFA(code:)` | Complete MFA → `Session` |
+| `sendLoginMFA()` / `resendLoginMFA()` | Send / resend MFA OTP → `[AuthFlowNotice]` |
+| `verifyLoginMFA(code:)` | Complete MFA → `LoginMFAResult` |
 | `exchangeTokens()` | Session → OAuth tokens |
+
+### Biometric
+
+| Method | Purpose |
+|--------|---------|
+| `startBiometricLogin()` | Create biometric login flow |
+| `loginWithBiometric(identifier:name:biometricAuthKey:)` | Biometric login → `LoginStep` |
+| `startBiometricSettings()` | Create biometric settings flow |
+| `settingsBindBiometric(...)` / `settingsUnbindBiometric(...)` | Bind / unbind → `[AuthFlowNotice]` |
 
 ### Logout
 
@@ -1871,36 +1946,36 @@ Requires non-empty `signupOptions`. `.basic` unlocks `register`; `.civilId` unlo
 | Method | Purpose |
 |--------|---------|
 | `startRecovery()` | Create recovery flow |
-| `recoverySendCode(option:identifier:)` | Send reset OTP (email/phone) |
-| `recoveryResendCode()` | Resend OTP |
-| `recoveryVerifyCode(_:)` | Verify OTP → session |
+| `recoverySendCode(option:identifier:)` | Send reset OTP → `[AuthFlowNotice]` |
+| `recoveryResendCode()` | Resend OTP → `[AuthFlowNotice]` |
+| `recoveryVerifyCode(_:)` | Verify OTP → `RecoveryVerifyResult` |
 | `startSettings()` | Open settings with session |
-| `settingsUpdatePassword(password:confirmPassword:)` | Set new password |
+| `settingsUpdatePassword(password:confirmPassword:)` | Set new password → `[AuthFlowNotice]` |
 
 ### Email / mobile settings
 
 | Method | Purpose |
 |--------|---------|
-| `settingsSendEmailCode(_:)` | OTP to new email |
-| `settingsVerifyEmailCode(_:)` | Confirm email |
-| `settingsSendMobileCode(...)` | OTP to mobile |
-| `settingsVerifyMobileCode(_:)` | Confirm mobile |
+| `settingsSendEmailCode(_:)` | OTP to new email → `[AuthFlowNotice]` |
+| `settingsVerifyEmailCode(_:)` | Confirm email → `[AuthFlowNotice]` |
+| `settingsSendMobileCode(...)` | OTP to mobile → `[AuthFlowNotice]` |
+| `settingsVerifyMobileCode(_:)` | Confirm mobile → `[AuthFlowNotice]` |
 
 ### Verification
 
 | Method | Purpose |
 |--------|---------|
 | `startVerification()` | Create verification flow |
-| `verificationSendOTP(channel:identifier:)` | Send activate OTP |
-| `verificationResendOTP()` | Resend |
-| `verificationVerifyOTP(_:)` | Verify |
+| `verificationSendOTP(channel:identifier:)` | Send activate OTP → `[AuthFlowNotice]` |
+| `verificationResendOTP()` | Resend → `[AuthFlowNotice]` |
+| `verificationVerifyOTP(_:)` | Verify → `[AuthFlowNotice]` |
 
 ### Civil ID
 
 | Method | Purpose |
 |--------|---------|
-| `settingsVerifyCivilId(_:expiry:)` | Validate Civil ID |
-| `settingsConfirmBindCivilId()` | Confirm bind |
+| `settingsVerifyCivilId(_:expiry:)` | Validate Civil ID → `CivilIdVerificationResult` |
+| `settingsConfirmBindCivilId()` | Confirm bind → `[AuthFlowNotice]` |
 
 ### Session / tokens
 
@@ -1916,8 +1991,8 @@ Requires non-empty `signupOptions`. `.basic` unlocks `register`; `.civilId` unlo
 
 ```swift
 enum LoginStep {
-    case requiresMFA(channel: MFAChannel, sessionId: String)
-    case authenticated(Session)
+    case requiresMFA(channel: MFAChannel, sessionId: String, notices: [AuthFlowNotice])
+    case authenticated(session: Session, notices: [AuthFlowNotice])
 }
 ```
 
@@ -1932,7 +2007,7 @@ enum RegistrationStep {
 
 ---
 
-## 21. Host checklist
+## 22. Host checklist
 
 1. Add SPM `MeeraAuth` + inject `AuthHTTPClient`
 2. Pass `clientId`, `scopes`, `locale`, `loginOptions`, endpoints
@@ -1944,9 +2019,10 @@ enum RegistrationStep {
 8. Update email/mobile via settings OTP APIs
 9. Gate app with `currentTokens()` on cold start
 10. Call backends with `try await auth.validAccessToken()` (auto-refresh)
-11. Map `AuthError.field` to form fields
+11. Map `AuthError.field` to form fields; show `AuthFlowNotice` for info/success toasts
 12. Enable `.verbose` network logs only in DEBUG
 13. Include `.offlineAccess` so refresh tokens are issued
+14. Biometric (if used): host stores `biometricAuthKey`; use `startBiometricLogin` / `settingsBindBiometric`
 
 ---
 
@@ -2005,7 +2081,8 @@ let auth = AuthClient(
 // Login
 try await auth.startLogin()
 let step = try await auth.login(option: .email, identifier: email, password: password)
-if case .requiresMFA = step {
+if case .requiresMFA(_, _, let notices) = step {
+    _ = notices
     _ = try await auth.verifyLoginMFA(code: otp)
 }
 let tokens = try await auth.exchangeTokens()
@@ -2019,15 +2096,15 @@ try await auth.logout()
 
 ```swift
 try await auth.startRecovery()
-try await auth.recoverySendCode(option: .email, identifier: email)
+_ = try await auth.recoverySendCode(option: .email, identifier: email)
 _ = try await auth.recoveryVerifyCode(otp)
 try await auth.startSettings()
-try await auth.settingsUpdatePassword(password: newPass, confirmPassword: newPass)
+_ = try await auth.settingsUpdatePassword(password: newPass, confirmPassword: newPass)
 ```
 
 ---
 
-## 22. Service docs (JSON + HTTP)
+## 23. Service docs (JSON + HTTP)
 
 Per-flow **AuthClient → HTTP → Mermaid decision tree → sample Swift → JSON**:
 
@@ -2036,6 +2113,7 @@ Per-flow **AuthClient → HTTP → Mermaid decision tree → sample Swift → JS
 | Doc | Topic |
 |-----|--------|
 | [login.md](./services/login.md) | AAL1 + AAL2 MFA; channel from server `active` only |
+| [biometric.md](./services/biometric.md) | Biometric login + settings bind/unbind |
 | [registration.md](./services/registration.md) | Basic + Civil ID signup |
 | [verification.md](./services/verification.md) | Activate email / mobile (host picks channel) |
 | [recovery.md](./services/recovery.md) | Forgot password → settings password |

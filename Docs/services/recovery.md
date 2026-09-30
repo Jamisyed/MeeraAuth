@@ -17,10 +17,10 @@ Prove identity with OTP (email / mobile / Civil ID), obtain a session, then set 
 | Method | Role |
 |--------|------|
 | `startRecovery()` | Create recovery flow |
-| `recoverySendCode(option:identifier:)` | Send OTP |
-| `recoveryResendCode()` | Resend |
-| `recoveryVerifyCode(_:)` | → `Session` |
-| `startSettings()` + `settingsUpdatePassword` | Set new password |
+| `recoverySendCode(option:identifier:)` | Send OTP → `[AuthFlowNotice]` |
+| `recoveryResendCode()` | Resend → `[AuthFlowNotice]` |
+| `recoveryVerifyCode(_:)` | → `RecoveryVerifyResult` (`session` + `notices`) |
+| `startSettings()` + `settingsUpdatePassword` | Set new password → `[AuthFlowNotice]` |
 
 ---
 
@@ -65,11 +65,13 @@ flowchart TD
 
 ```swift
 try await auth.startRecovery()
-try await auth.recoverySendCode(option: .email, identifier: email)
-_ = try await auth.recoveryVerifyCode(otp)
+let sendNotices = try await auth.recoverySendCode(option: .email, identifier: email)
+_ = sendNotices
+let result = try await auth.recoveryVerifyCode(otp)
+// result.session, result.notices
 
 try await auth.startSettings()
-try await auth.settingsUpdatePassword(password: newPass, confirmPassword: newPass)
+_ = try await auth.settingsUpdatePassword(password: newPass, confirmPassword: newPass)
 ```
 
 ---
@@ -134,13 +136,13 @@ try await auth.settingsUpdatePassword(password: newPass, confirmPassword: newPas
 }
 ```
 
-**Response:** session JSON → MeeraAuth saves and returns `Session`.
+**Response:** session JSON → MeeraAuth saves and returns `RecoveryVerifyResult(session:notices:)`.
 
 ---
 
 ## 8. Errors
 
-SSO messages → `AuthError`. Do not skip `startSettings()` between verify and password update.
+SSO `type: "error"` → `AuthError`. `type: "info"` → notices. Do not skip `startSettings()` between verify and password update.
 
 ---
 

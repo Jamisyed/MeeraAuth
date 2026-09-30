@@ -19,9 +19,9 @@ Unlike **login MFA**, the **host chooses** the channel.
 | Method | Role |
 |--------|------|
 | `startVerification()` | New verification flow (skip if seeded from register) |
-| `verificationSendOTP(channel:identifier:)` | Send OTP |
-| `verificationResendOTP()` | Resend |
-| `verificationVerifyOTP(_:)` | Confirm code |
+| `verificationSendOTP(channel:identifier:)` | Send OTP → `[AuthFlowNotice]` |
+| `verificationResendOTP()` | Resend → `[AuthFlowNotice]` |
+| `verificationVerifyOTP(_:)` | Confirm code → `[AuthFlowNotice]` |
 
 ---
 
@@ -63,8 +63,8 @@ flowchart TD
 
 ```swift
 try await auth.startVerification() // omit if seeded
-try await auth.verificationSendOTP(channel: .email, identifier: email)
-try await auth.verificationVerifyOTP(code)
+_ = try await auth.verificationSendOTP(channel: .email, identifier: email)
+_ = try await auth.verificationVerifyOTP(code)
 ```
 
 ---

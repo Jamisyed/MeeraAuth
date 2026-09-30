@@ -17,13 +17,13 @@ Create a new account — either **basic** (profile + password → SSO verificati
 | Method | Role |
 |--------|------|
 | `startRegistration()` | Create registration flow |
-| `register(_:)` | Basic password registration |
+| `register(_:)` | Basic password registration → `RegistrationStep` |
 | `verifyRegistrationCivilId(_:expiry:)` | Civil ID step |
-| `sendRegistrationMobileOTP` / `resendRegistrationMobileOTP` | Mobile OTP |
-| `verifyRegistrationMobileOTP` | Confirm mobile |
-| `sendRegistrationEmailOTP` / `resendRegistrationEmailOTP` | Email OTP |
-| `verifyRegistrationEmailOTP` | Confirm email |
-| `submitRegistrationPassword` | Civil ID final password |
+| `sendRegistrationMobileOTP` / `resendRegistrationMobileOTP` | Mobile OTP → `[AuthFlowNotice]` |
+| `verifyRegistrationMobileOTP` | Confirm mobile → `[AuthFlowNotice]` |
+| `sendRegistrationEmailOTP` / `resendRegistrationEmailOTP` | Email OTP → `[AuthFlowNotice]` |
+| `verifyRegistrationEmailOTP` | Confirm email → `[AuthFlowNotice]` |
+| `submitRegistrationPassword` | Civil ID final password → `RegistrationStep` |
 
 | Path | Typical `RegistrationStep` |
 |------|----------------------------|
@@ -98,18 +98,18 @@ let basicStep = try await auth.register(RegistrationProfile(
     password: pass, confirmPassword: pass
 ))
 if case .requiresVerification = basicStep {
-    try await auth.verificationSendOTP(channel: .email, identifier: email)
-    try await auth.verificationVerifyOTP(code)
+    _ = try await auth.verificationSendOTP(channel: .email, identifier: email)
+    _ = try await auth.verificationVerifyOTP(code)
 }
 // navigate to login
 
 // Civil ID → completed → login (no verification APIs)
 try await auth.startRegistration()
 try await auth.verifyRegistrationCivilId(civilId, expiry: "2026-01-01")
-try await auth.sendRegistrationMobileOTP(mobile: mobile, username: name)
-try await auth.verifyRegistrationMobileOTP(smsCode)
-try await auth.sendRegistrationEmailOTP(email)
-try await auth.verifyRegistrationEmailOTP(emailCode)
+_ = try await auth.sendRegistrationMobileOTP(mobile: mobile, username: name)
+_ = try await auth.verifyRegistrationMobileOTP(smsCode)
+_ = try await auth.sendRegistrationEmailOTP(email)
+_ = try await auth.verifyRegistrationEmailOTP(emailCode)
 _ = try await auth.submitRegistrationPassword(password: pass, confirmPassword: pass)
 // navigate to login — do not auto-exchange when session is nil
 ```

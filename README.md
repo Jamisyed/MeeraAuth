@@ -42,10 +42,12 @@ try await auth.startLogin()
 let step = try await auth.login(option: .email, identifier: email, password: password)
 
 switch step {
-case .authenticated:
-    break
-case .requiresMFA:
-    _ = try await auth.verifyLoginMFA(code: otp)
+case .authenticated(let session, let notices):
+    _ = (session, notices)
+case .requiresMFA(let channel, _, let notices):
+    _ = (channel, notices)
+    let result = try await auth.verifyLoginMFA(code: otp)
+    _ = result.session
 }
 
 let tokens = try await auth.exchangeTokens()
@@ -58,7 +60,7 @@ Host apps (UI + TFNetwork adapter)
         ↓
    AuthClient (public facade, actor)
         ↓
- Login / Registration / Recovery / Verification / Settings
+ Login / Biometric / Registration / Recovery / Verification / Settings
         ↓
  AuthRequest enums → SSOAPIClient.execute
         ↓
@@ -69,17 +71,19 @@ Host apps (UI + TFNetwork adapter)
 
 Internal networking mirrors Elevate `RequestProtocol`: typed request enums build path / params; the host still supplies HTTP.
 
+Info/success SSO messages return as `AuthFlowNotice`; errors still throw `AuthError`. See [Docs/services/README.md](./Docs/services/README.md#authflownotice).
+
 ### Source groups
 
 ```
 Public/
   Client/            AuthClient.swift
-  Client/Extensions/ AuthClient+Events|Session|Login|Registration|…
+  Client/Extensions/ AuthClient+Events|Session|Login|Biometric|Registration|…
   Configuration/
-  Models/Login|Registration|Session/
-  Errors/            AuthError (LocalizedError) + AuthErrorCatalog.json in Resources/
+  Models/Login|Registration|Recovery|Session/
+  Errors/            AuthError, AuthFlowNotice + AuthErrorCatalog.json
 Domain/
-  Flows/Login|Registration|Recovery|Verification|Settings/
+  Flows/Login|Biometric|Registration|Recovery|Verification|Settings/
   Tokens/  Client/
 Data/
   Requests/Core/
@@ -95,7 +99,9 @@ Infrastructure/
 |--------|----------------|
 | `.email` | `password` |
 | `.phone` | `password` |
-| `.civilId` | `civilid` |
+| `.civilId` | configured `civilIdMethod` (e.g. `civilid`) |
+
+Biometric login uses SSO `method: biometric` (see [Docs/services/biometric.md](./Docs/services/biometric.md)). Host stores `biometricAuthKey`.
 
 ## Network logging (host-controlled)
 
