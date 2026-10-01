@@ -34,7 +34,7 @@ extension AuthClient {
 
     public func startBiometricSettings() async throws {
         let sessionId = try await sessionStore.load()?.id
-        let token = try await tokenStore.load()?.accessToken
+        let token = try await tokenService.currentTokens()?.accessToken
         try await biometricFlow.startSettings(sessionId: sessionId, accessToken: token)
     }
 

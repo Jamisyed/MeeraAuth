@@ -11,7 +11,7 @@ extension AuthClient {
     // MARK: - Logout
 
     public func logout() async throws {
-        if let token = try await tokenStore.load()?.accessToken {
+        if let token = try await tokenService.currentTokens()?.accessToken, !token.isEmpty {
             _ = try? await api.execute(LogoutRequest.logout(accessToken: token))
         }
         try await sessionStore.clear()

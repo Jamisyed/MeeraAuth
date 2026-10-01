@@ -12,7 +12,9 @@ public actor AuthClient: AuthClientServing {
     public nonisolated let configuration: AuthConfiguration
 
     let sessionStore: any SessionStore
-    let tokenStore: any TokenStore
+    /// Optional durable token persistence (e.g. `KeychainTokenStore`). `nil` = host owns storage;
+    /// AuthClient still keeps tokens in process memory for same-launch refresh.
+    let tokenStore: (any TokenStore)?
     let api: SSOAPIClient
     let loginFlow: any LoginFlowServing
     let registrationFlow: any RegistrationFlowServing
@@ -28,7 +30,7 @@ public actor AuthClient: AuthClientServing {
         configuration: AuthConfiguration,
         httpClient: any AuthHTTPClient,
         sessionStore: any SessionStore = InMemorySessionStore(),
-        tokenStore: any TokenStore = KeychainTokenStore()
+        tokenStore: (any TokenStore)? = nil
     ) {
         AuthConfiguration.assertValid(configuration)
         AuthLocalization.locale = configuration.locale

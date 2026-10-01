@@ -22,8 +22,14 @@ protocol AuthClientServing: Actor {
     func currentTokens() async throws -> TokenSet?
     func accessToken() async throws -> String?
     func validAccessToken(skew: TimeInterval) async throws -> String
+    /// Put host-saved tokens into AuthClient memory (and optional `tokenStore`). No network.
+    func restoreTokens(_ tokens: TokenSet) async throws
     @discardableResult
     func refreshTokens() async throws -> TokenSet
+    @discardableResult
+    func refreshTokens(using tokens: TokenSet) async throws -> TokenSet
+    @discardableResult
+    func refreshTokens(refreshToken: String) async throws -> TokenSet
 
     // MARK: - Login
 
